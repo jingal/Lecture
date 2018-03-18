@@ -8,6 +8,7 @@
 #include <grp.h>
 #include <time.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 
 #define LIST 1
 #define INODE 2
@@ -17,6 +18,16 @@
 void file_list(DIR *dp, int flag, int depth);
 void get_dir_list(const char *d_name, int flag, int depth);
 void get_file_stat(const char* f_name, int flag);
+
+
+int get_columns() 
+{
+    struct winsize w;
+    ioctl(0, TIOCGWINSZ, &w);
+
+    printf("columns %d\n", w.ws_col);
+	return w.ws_col;
+}
 
 int compfunc(const void *const a, const void *const b)
 {
@@ -191,6 +202,8 @@ int main(int argc, char** argv)
 			case 'a' : flag |= ALL; break;
 		}
 	}
+
+	get_columns();
 
 	if(argc > 1) 
 		get_dir_list(argv[1], flag, 0);
