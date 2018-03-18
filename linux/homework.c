@@ -8,7 +8,6 @@
 #include <grp.h>
 #include <time.h>
 #include <stdlib.h>
-#include <sys/ioctl.h>
 
 #define LIST 1
 #define INODE 2
@@ -19,19 +18,15 @@ void file_list(DIR *dp, int flag, int depth);
 void get_dir_list(const char *d_name, int flag, int depth);
 void get_file_stat(const char* f_name, int flag);
 
-
-int get_columns() 
-{
-    struct winsize w;
-    ioctl(0, TIOCGWINSZ, &w);
-
-    printf("columns %d\n", w.ws_col);
-	return w.ws_col;
-}
-
 int compfunc(const void *const a, const void *const b)
 {
-    return strcmp((*(struct dirent **) a)->d_name, (*(struct dirent **) b)->d_name);
+	char *lhs = (*(struct dirent **) a)->d_name;
+	char *rhs = (*(struct dirent **) b)->d_name;
+
+	lhs = ((lhs[1] != '\0') && (lhs[0] == '.' && lhs[1] != '.')) ? lhs + 1 : lhs;
+	rhs = ((rhs[1] != '\0') && (rhs[0] == '.' && rhs[1] != '.')) ? rhs + 1 : rhs;
+
+    return strcmp(lhs, rhs);
 }
 
 void file_list(DIR *dp, int flag, int depth)
@@ -64,6 +59,20 @@ void file_list(DIR *dp, int flag, int depth)
 
 	qsort(d_list, count, sizeof(*d_list), compfunc);
 
+
+	i = 0;
+	while((p = readdir(dp)) != NULL)
+	{
+		lstat(d_list[i]->d_name, &buf);
+
+		if(p->d_name[0] == '.' && !(flag & ALL))
+			continue;
+		d_list[i++] = p;
+	}
+	rewinddir(dp);
+
+
+
 	if(flag & RECUR && depth == 0) printf(".:\n");
 	for(i = 0;i < count; ++i)
 	{
@@ -72,7 +81,11 @@ void file_list(DIR *dp, int flag, int depth)
 		{
 			printf("%lu ", buf.st_ino);
 		}
-		printf("%s  ", d_list[i]->d_name);
+
+		if(flag & LIST)
+			get_file_stat(d_list[i]->d_name, flag);
+		else
+			printf("%s  ", d_list[i]->d_name);
 	}
 	printf("\n");
 
@@ -118,13 +131,21 @@ void get_dir_list(const char *d_name, int flag, int depth)
 	chdir("..");
 }
 
+
+void print_date(struct stat *buf)
+{
+	struct tm *tmp;
+
+	tmp = localtime(&buf->st_mtime);
+	printf("%2d월 %2d %02d:%02d ", tmp->tm_mon+1, tmp->tm_mday, tmp->tm_hour, tmp->tm_min);
+}
+
 void get_file_stat(const char* f_name, int flag)
 {
 	int i;
 	struct stat buf;
 	struct passwd *pwd;
 	struct group *grp;
-	struct tm *tmp;
 
 	char perm[] = "----------";
 	char rwx[] = "rwx";
@@ -170,8 +191,7 @@ void get_file_stat(const char* f_name, int flag)
 	else
 		printf("%lu ", buf.st_size);
 
-	tmp = localtime(&buf.st_mtime);
-	printf("%2d월 %2d %02d:%02d ", tmp->tm_mon+1, tmp->tm_mday, tmp->tm_hour, tmp->tm_min);
+	print_date(&buf);
 
 	if(perm[0] =='l')
 	{
@@ -202,8 +222,6 @@ int main(int argc, char** argv)
 			case 'a' : flag |= ALL; break;
 		}
 	}
-
-	get_columns();
 
 	if(argc > 1) 
 		get_dir_list(argv[1], flag, 0);
