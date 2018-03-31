@@ -1,0 +1,15 @@
+#ifndef COMMON_H_
+#define COMMON_H_
+
+
+#define SHM_KEY 16854725
+#define MSG_KEY 16906499
+
+#define MSG_SEND_CHILD_TYPE 1L
+#define MSG_SEND_PARENT_TYPE 2L
+
+#define MSG_PROCEED_QUEUE 0
+#define MSG_QUIT_QUEUE 1
+
+
+#endif //COMMON_H_
